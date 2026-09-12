@@ -1,7 +1,7 @@
 #include "alu.h"
 #include "vm.h"
 #include "hal.h"
-
+/*
 static void add_caculate_flags16(VM* vm, uint16_t a, uint16_t b, uint32_t result){
     // sf
 
@@ -25,3 +25,4 @@ uint8_t alu_add8(VM* vm, uint8_t a, uint8_t b){
 
     return a + b;
 }
+    */

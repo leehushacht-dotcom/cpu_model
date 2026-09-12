@@ -104,7 +104,7 @@ uint32_t get_final_address(VM* vm, uint8_t mod, uint8_t rm){
 
 // B0 -> B7
 void MOV_imm8_to_REG(VM* vm){
-    uint8_t reg_i = read_cur_opcode8(vm) & 0x07; // later do read current opcode also!
+    uint8_t reg_i = read_cur_opcode8(vm) & 0x07; // mov 0x07 mask to the inner func! in all this funcs
     uint8_t imm8 = fetch_byte(vm);
     write_reg8(vm, reg_i, imm8);
 }
@@ -142,85 +142,30 @@ void MOV_rm16_to_r16(VM* vm){
 }
 // C7
 void MOV_imm16_to_rm16(VM* vm){
-    // add mod/rm func instead!
-    uint8_t cur_byte = fetch_byte(vm);
-    uint8_t mod = (cur_byte & 0xC0) >> 6; // 11000000
-    // reg has to be 000! 
-    uint8_t rm = (cur_byte & 0x07); // 00000111
-    uint32_t final_address = 0;
-    if (mod != 3)
-    {
-        final_address = get_final_address(vm, mod, rm);
-        uint16_t imm16 = fetch_word(vm);
-        write_mem16(vm, final_address, imm16);
-    }
-    else
-    {
-        write_reg16(vm, rm, fetch_word(vm));
-    }
+    ModRM m = decodeModRM(vm);
+    uint32_t final_address = modRMaddress(vm, m);
+    write_RM16(vm, m, final_address, fetch_word(vm));
 }
 // C6
 void MOV_imm8_to_rm8(VM* vm){
-    // C6 C0 55
-    uint8_t cur_byte = fetch_byte(vm);
-    uint8_t mod = (cur_byte & 0xC0) >> 6; // 11000000
-    // reg has to be 000! 
-    uint8_t rm = (cur_byte & 0x07); // 00000111
-    uint32_t final_address = 0;
-    if (mod != 3)
-    {
-        final_address = get_final_address(vm, mod, rm);
-        uint8_t imm8 = fetch_byte(vm);
-        write_mem8(vm, final_address, imm8);
-    }
-    else
-    {
-        uint8_t imm8 = fetch_byte(vm);
-        write_reg8(vm, rm, imm8);     
-    }
+    ModRM m = decodeModRM(vm);
+    uint32_t final_address = modRMaddress(vm, m);
+    write_RM8(vm, m, final_address, fetch_byte(vm));
 }
 
 // 8C
 void MOV_segreg_to_rm16(VM* vm){
-    // mod => 2 high bits | 11 = target is reg, 00 target is memory, 01 memory + jump(*[bx+5]) 8 bits, 10 big jump 16 bits
-    // reg => 3 middle bits
-    // target(reg/memory) => 3 low bits
-    uint8_t cur_byte = fetch_byte(vm);
-    uint8_t mod = (cur_byte & 0xC0) >> 6; // 11000000
-    uint8_t seg_reg_i = (cur_byte & 0x38) >> 3; // 00111000
-    uint8_t target_rm = (cur_byte & 0x07); // 00000111
-    uint32_t final_address = 0;
-    if (mod != 3)
-    {
-        final_address = get_final_address(vm, mod, target_rm);
-        write_mem16(vm, final_address, read_segreg16(vm, seg_reg_i));
-    }
-    else
-    {
-        write_reg16(vm, target_rm, read_segreg16(vm, seg_reg_i));
-    }
+    ModRM m = decodeModRM(vm);
+    uint32_t final_address = modRMaddress(vm, m);
+    write_RM16(vm, m, final_address, read_segreg16(vm, m.reg));
 }
 // 8E
 void MOV_rm16_to_segreg(VM* vm){
-    // mod => 2 high bits | 11 = target is reg, 00 target is memory, 01 memory + jump(*[bx+5]) 8 bits, 10 big jump 16 bits
-    // reg => 3 middle bits
-    // target(reg/memory) => 3 low bits
-    uint8_t cur_byte = fetch_byte(vm);
-    uint8_t mod = (cur_byte & 0xC0) >> 6; // 11000000
-    uint8_t seg_reg_i = (cur_byte & 0x38) >> 3; // 00111000
-    uint8_t target_rm = (cur_byte & 0x07); // 00000111
-    uint32_t final_address = 0;
-    if (mod != 3)
-    {
-        final_address = get_final_address(vm, mod, target_rm);
-        write_segreg16(vm, seg_reg_i, read_mem16(vm, final_address));
-    }
-    else
-    {
-        write_segreg16(vm, seg_reg_i, read_reg16(vm, target_rm));
-    }
-    // ** when mov ss or mov cs -> there are some actions -> check later!
+    ModRM m = decodeModRM(vm);
+    uint32_t final_address = modRMaddress(vm, m);
+    write_segreg16(vm, m.reg, read_RM16(vm, m, final_address));
 
+    // ** when mov ss or mov cs -> there are some actions -> check later!
 }
 // 50 - 57
 void PUSH_reg16(VM* vm){
