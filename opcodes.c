@@ -18,38 +18,38 @@ static ModRM decodeModRM(VM *vm){
     return m;
 }
 
-static uint16_t modRMaddress(VM* vm, ModRM m){
+static uint32_t modRMaddress(VM* vm, ModRM m){
     if (m.mod == 3){
         return 0;
     }
     return get_final_address(vm, m.mod, m.rm);
 }
 
-static uint16_t read_RM16(VM *vm, ModRM m, uint16_t address){
+static uint16_t read_RM16(VM *vm, ModRM m, uint32_t address){
     if (m.mod == 3){
-        return read_reg16(vm, m.reg);
+        return read_reg16(vm, m.rm);
     }
     return read_mem16(vm, address);
 }
 
-static void write_RM16(VM *vm, ModRM m, uint16_t address, uint16_t v){
+static void write_RM16(VM *vm, ModRM m, uint32_t address, uint16_t v){
     if (m.mod == 3){
-        write_reg16(vm, m.reg, v);
+        write_reg16(vm, m.rm, v);
     }
     else{
         write_mem16(vm, address, v);
     }
 }
-static uint8_t read_RM8(VM *vm, ModRM m, uint16_t address){
+static uint8_t read_RM8(VM *vm, ModRM m, uint32_t address){
     if (m.mod == 3){
-        return read_reg8(vm, m.reg);
+        return read_reg8(vm, m.rm);
     }
     return read_mem8(vm, address);
 }
 
-static void write_RM8(VM *vm, ModRM m, uint16_t address, uint8_t v){
+static void write_RM8(VM *vm, ModRM m, uint32_t address, uint8_t v){
     if (m.mod == 3){
-        write_reg8(vm, m.reg, v);
+        write_reg8(vm, m.rm, v);
     }
     else{
         write_mem8(vm, address, v);
@@ -117,7 +117,7 @@ void MOV_imm16_to_REG(VM* vm){
 }
 
 // 88
-static MOV_r8_to_rm8(VM* vm){
+void MOV_r8_to_rm8(VM* vm){
     ModRM m = decodeModRM(vm);
     uint32_t final_address = modRMaddress(vm, m);
     write_RM8(vm, m, final_address, read_reg8(vm, m.reg));
@@ -130,43 +130,15 @@ void MOV_rm8_to_r8(VM* vm){
 }
 // 89
 void MOV_r16_to_rm16(VM* vm){
-    // mod => 2 high bits | 11 = target is reg, 00 target is memory, 01 memory + jump(*[bx+5]) 8 bits, 10 big jump 16 bits
-    // reg => 3 middle bits
-    // target(reg/memory) => 3 low bits
-    uint8_t cur_byte = fetch_byte(vm);
-    uint8_t mod = (cur_byte & 0xC0) >> 6; // 11000000
-    uint8_t reg_i = (cur_byte & 0x38) >> 3; // 00111000
-    uint8_t target_rm = (cur_byte & 0x07); // 00000111
-    uint32_t final_address = 0;
-    if (mod != 3)
-    {
-        final_address = get_final_address(vm, mod, target_rm);
-        write_mem16(vm, final_address, read_reg16(vm, reg_i));
-    }
-    else
-    {
-        write_reg16(vm, target_rm, read_reg16(vm, reg_i));
-    }
+    ModRM m = decodeModRM(vm);
+    uint32_t final_address = modRMaddress(vm, m);
+    write_RM16(vm, m, final_address, read_reg16(vm, m.reg));
 }
 // 8B
 void MOV_rm16_to_r16(VM* vm){
-    // mod => 2 high bits | 11 = target is reg, 00 target is memory, 01 memory + jump(*[bx+5]) 8 bits, 10 big jump 16 bits
-    // reg => 3 middle bits
-    // target(reg/memory) => 3 low bits
-    uint8_t cur_byte = fetch_byte(vm);
-    uint8_t mod = (cur_byte & 0xC0) >> 6; // 11000000
-    uint8_t reg_i = (cur_byte & 0x38) >> 3; // 00111000
-    uint8_t target_rm = (cur_byte & 0x07); // 00000111
-    uint32_t final_address = 0;
-    if (mod != 3)
-    {
-        final_address = get_final_address(vm, mod, target_rm);
-        write_reg16(vm, reg_i, read_mem16(vm, final_address));
-    }
-    else
-    {
-        write_reg16(vm, reg_i, read_reg16(vm, target_rm));
-    }
+    ModRM m = decodeModRM(vm);
+    uint32_t final_address = modRMaddress(vm, m);
+    write_reg16(vm, m.reg, read_RM16(vm, m, final_address));
 }
 // C7
 void MOV_imm16_to_rm16(VM* vm){
