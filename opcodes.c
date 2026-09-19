@@ -1,5 +1,8 @@
 #include "opcodes.h"
 #include "hal.h"
+#include "alu.h"
+
+
 
 typedef struct { 
     uint8_t mod, 
@@ -7,6 +10,8 @@ typedef struct {
     rm; 
 } ModRM;
 
+static alu_operands_handle8  alu_op8[8];    // add8, or8, adc8, sbb8, and8, sub8, xor8, cmp8
+static alu_operands_handle16 alu_op16[8];   // same, 16-bit
 
 static uint32_t get_final_address(VM* vm, uint8_t mod, uint8_t rm){
     uint16_t base_address = 0;
@@ -195,8 +200,48 @@ void handle_unknown_opcode(VM* vm, uint8_t cur_opcode) {
     turn_off_vm(vm);
 }
 
+
+// alu operands:
+uint8_t all_alu_operands_handle8(VM* vm, uint8_t cur_opcode, uint8_t a, uint8_t b){
+    return alu_op8[(cur_opcode >> 3) & 0x07](vm, a, b);
+}
+uint16_t all_alu_operands_handle16(VM* vm, uint8_t cur_opcode, uint16_t a, uint16_t b){
+    return alu_op16[(cur_opcode >> 3) & 0x07](vm, a, b);
+}
+
+void alu_rm8_r8(VM* vm, uint8_t cur_opcode){
+    ModRM m = decodeModRM(vm);
+    uint32_t final_address = modRMaddress(vm, m);
+    write_RM8(vm, m, final_address, all_alu_operands_handle8(vm, cur_opcode, read_RM8(vm, m, final_address), read_reg8(vm, m.reg)));
+}
+void alu_rm16_r16(VM* vm, uint8_t cur_opcode){
+    ModRM m = decodeModRM(vm);
+    uint32_t final_address = modRMaddress(vm, m);
+    write_RM16(vm, m, final_address, all_alu_operands_handle16(vm, cur_opcode, read_RM16(vm, m, final_address), read_reg16(vm, m.reg)));
+}
+void alu_r8_rm8(VM* vm, uint8_t cur_opcode){
+    ModRM m = decodeModRM(vm);
+    uint32_t final_address = modRMaddress(vm, m);
+    write_reg8(vm, m.reg, all_alu_operands_handle8(vm, cur_opcode, read_reg8(vm, m.reg), read_RM8(vm, m, final_address)));
+}
+void alu_r16_rm16(VM* vm, uint8_t cur_opcode){
+    ModRM m = decodeModRM(vm);
+    uint32_t final_address = modRMaddress(vm, m);
+    write_reg16(vm, m.reg, all_alu_operands_handle16(vm, cur_opcode, read_reg16(vm, m.reg), read_RM16(vm, m, final_address)));
+}
+void alu_al_imm8(VM* vm, uint8_t cur_opcode){
+    write_reg8(vm, AL, all_alu_operands_handle8(vm, cur_opcode, read_reg8(vm, AL), fetch_byte(vm)));
+}
+void alu_ax_imm16(VM* vm, uint8_t cur_opcode){
+    write_reg16(vm, AX, all_alu_operands_handle16(vm, cur_opcode, read_reg16(vm, AX), fetch_word(vm)));
+
+}
+
 // 3. פונקציית האתחול - נקראת פעם אחת בתחילת התוכנית!
 void init_opcode_table() {
+
+
+
     // fill with error func
     for (int i = 0; i < 256; i++) {
         opcode_main_handle_list[i] = handle_unknown_opcode;
@@ -230,4 +275,34 @@ void init_opcode_table() {
 
 
     // ...
+    // in progress: 
+    // -------------------
+    alu_op8[0] = alu_add8;
+    alu_op8[1] = alu_or8;
+    alu_op8[2] = alu_adc8;
+    alu_op8[3] = alu_sbb8;
+    alu_op8[4] = alu_and8;
+    alu_op8[5] = alu_sub8;
+    alu_op8[6] = alu_xor8;
+    alu_op8[7] = alu_cmp8;
+
+    alu_op16[0] = alu_add16;
+    alu_op16[1] = alu_or16;
+    alu_op16[2] = alu_adc16;
+    alu_op16[3] = alu_sbb16;
+    alu_op16[4] = alu_and16;
+    alu_op16[5] = alu_sub16;
+    alu_op16[6] = alu_xor16;
+    alu_op16[7] = alu_cmp16;
+    // --------------------
+    for (int row = 0; row < 8; row++){
+        int base = row * 8;
+        opcode_main_handle_list[base + 0] = alu_rm8_r8;
+        opcode_main_handle_list[base + 1] = alu_rm16_r16;
+        opcode_main_handle_list[base + 2] = alu_r8_rm8;
+        opcode_main_handle_list[base + 3] = alu_r16_rm16;
+        opcode_main_handle_list[base + 4] = alu_al_imm8;
+        opcode_main_handle_list[base + 5] = alu_ax_imm16;
+    }
+    // opcode_main_handle_list[0xF4] = HLT;
 }

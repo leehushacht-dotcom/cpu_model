@@ -7,8 +7,8 @@
 // reg api
 uint16_t read_reg16(const VM* vm, REG reg_index); // R
 void write_reg16(VM* vm, REG reg_index, uint16_t value); // W
-uint8_t read_reg8(const VM* vm, uint8_t reg_index); // R
-void write_reg8(VM* vm, uint8_t reg_index, uint8_t value); // W
+uint8_t read_reg8(const VM* vm, REG8 reg_index); // R
+void write_reg8(VM* vm, REG8 reg_index, uint8_t value); // W
 // memory api
 void write_mem16(VM* vm, uint32_t address, uint16_t value); // W
 uint16_t read_mem16(const VM* vm, uint32_t physical_address); // R
