@@ -7,6 +7,52 @@ typedef struct {
     rm; 
 } ModRM;
 
+
+static uint32_t get_final_address(VM* vm, uint8_t mod, uint8_t rm){
+    uint16_t base_address = 0;
+    uint32_t final_address = 0;
+    uint8_t segment_reg_index = DS;
+    switch (rm)
+    {
+        
+        case 0: base_address = read_reg16(vm, BX) + read_reg16(vm, SI); break;
+        case 1: base_address = read_reg16(vm, BX) + read_reg16(vm, DI); break;
+        case 2: base_address = read_reg16(vm, BP) + read_reg16(vm, SI); segment_reg_index = SS; break;
+        case 3: base_address = read_reg16(vm, BP) + read_reg16(vm, DI); segment_reg_index = SS; break;
+        case 4: base_address = read_reg16(vm, SI); break;
+        case 5: base_address = read_reg16(vm, DI); break;
+        case 6:
+        {
+            if (mod == 0)
+            {
+                base_address = fetch_word(vm); break; // special *
+            }
+            else
+            {
+                 base_address = read_reg16(vm, BP); segment_reg_index = SS; break;
+            }
+        } 
+        case 7: base_address = read_reg16(vm, BX); break;      
+    }
+    switch (mod)
+    {
+        case 1: {
+            int8_t disp8 = (int8_t)fetch_byte(vm); // 0xFE הופך למינוס 2 אמיתי
+            base_address += disp8;
+            break;
+        }
+        case 2: {
+            int16_t disp16 = (int16_t)fetch_word(vm); 
+            base_address += disp16;
+            break;
+        }
+    }
+    
+    final_address = get_address(read_segreg16(vm, segment_reg_index), base_address); // later do read_reg16(vm, BX) for segreg also
+
+    return final_address;
+}
+
 // < ------------ Mod RM Area ------------ > //
 static ModRM decodeModRM(VM *vm){
     // 00 = mod | 000 = reg | 000 = RM
@@ -57,110 +103,73 @@ static void write_RM8(VM *vm, ModRM m, uint32_t address, uint8_t v){
 }
 // < ------------ Mod RM Area ------------ > //
 
-uint32_t get_final_address(VM* vm, uint8_t mod, uint8_t rm){
-    uint16_t base_address = 0;
-    uint32_t final_address = 0;
-    uint8_t segment_reg_index = DS;
-    switch (rm)
-    {
-        
-        case 0: base_address = read_reg16(vm, BX) + read_reg16(vm, SI); break;
-        case 1: base_address = read_reg16(vm, BX) + read_reg16(vm, DI); break;
-        case 2: base_address = read_reg16(vm, BP) + read_reg16(vm, SI); segment_reg_index = SS; break;
-        case 3: base_address = read_reg16(vm, BP) + read_reg16(vm, DI); segment_reg_index = SS; break;
-        case 4: base_address = read_reg16(vm, SI); break;
-        case 5: base_address = read_reg16(vm, DI); break;
-        case 6:
-        {
-            if (mod == 0)
-            {
-                base_address = fetch_word(vm); break; // special *
-            }
-            else
-            {
-                 base_address = read_reg16(vm, BP); segment_reg_index = SS; break;
-            }
-        } 
-        case 7: base_address = read_reg16(vm, BX); break;      
-    }
-    switch (mod)
-    {
-        case 1: {
-            int8_t disp8 = (int8_t)fetch_byte(vm); // 0xFE הופך למינוס 2 אמיתי
-            base_address += disp8;
-            break;
-        }
-        case 2: {
-            int16_t disp16 = (int16_t)fetch_word(vm); 
-            base_address += disp16;
-            break;
-        }
-    }
-    
-    final_address = get_address(read_segreg16(vm, segment_reg_index), base_address); // later do read_reg16(vm, BX) for segreg also
-
-    return final_address;
-}
 
 // B0 -> B7
-void MOV_imm8_to_REG(VM* vm){
-    uint8_t reg_i = read_cur_opcode8(vm) & 0x07; // mov 0x07 mask to the inner func! in all this funcs
+void MOV_imm8_to_REG(VM* vm, uint8_t cur_opcode){
+    uint8_t reg_i = cur_opcode & 0x07;
     uint8_t imm8 = fetch_byte(vm);
     write_reg8(vm, reg_i, imm8);
 }
 // B8 -> BF
-void MOV_imm16_to_REG(VM* vm){
-    
-    uint8_t reg_i = read_cur_opcode8(vm) & 0x07;
+void MOV_imm16_to_REG(VM* vm, uint8_t cur_opcode){ 
+    uint8_t reg_i = cur_opcode & 0x07;
     uint16_t imm16 = fetch_word(vm);
     write_reg16(vm, reg_i, imm16);
 }
 
 // 88
-void MOV_r8_to_rm8(VM* vm){
+void MOV_r8_to_rm8(VM* vm, uint8_t cur_opcode){
+    (void)cur_opcode;
     ModRM m = decodeModRM(vm);
     uint32_t final_address = modRMaddress(vm, m);
     write_RM8(vm, m, final_address, read_reg8(vm, m.reg));
 }
 // 8A
-void MOV_rm8_to_r8(VM* vm){
+void MOV_rm8_to_r8(VM* vm, uint8_t cur_opcode){
+    (void)cur_opcode;
     ModRM m = decodeModRM(vm);
     uint32_t final_address = modRMaddress(vm, m);
     write_reg8(vm, m.reg, read_RM8(vm, m, final_address));
 }
 // 89
-void MOV_r16_to_rm16(VM* vm){
+void MOV_r16_to_rm16(VM* vm, uint8_t cur_opcode){
+    (void)cur_opcode;
     ModRM m = decodeModRM(vm);
     uint32_t final_address = modRMaddress(vm, m);
     write_RM16(vm, m, final_address, read_reg16(vm, m.reg));
 }
 // 8B
-void MOV_rm16_to_r16(VM* vm){
+void MOV_rm16_to_r16(VM* vm, uint8_t cur_opcode){
+    (void)cur_opcode;
     ModRM m = decodeModRM(vm);
     uint32_t final_address = modRMaddress(vm, m);
     write_reg16(vm, m.reg, read_RM16(vm, m, final_address));
 }
 // C7
-void MOV_imm16_to_rm16(VM* vm){
+void MOV_imm16_to_rm16(VM* vm, uint8_t cur_opcode){
+    (void)cur_opcode;
     ModRM m = decodeModRM(vm);
     uint32_t final_address = modRMaddress(vm, m);
     write_RM16(vm, m, final_address, fetch_word(vm));
 }
 // C6
-void MOV_imm8_to_rm8(VM* vm){
+void MOV_imm8_to_rm8(VM* vm, uint8_t cur_opcode){
+    (void)cur_opcode;
     ModRM m = decodeModRM(vm);
     uint32_t final_address = modRMaddress(vm, m);
     write_RM8(vm, m, final_address, fetch_byte(vm));
 }
 
 // 8C
-void MOV_segreg_to_rm16(VM* vm){
+void MOV_segreg_to_rm16(VM* vm, uint8_t cur_opcode){
+    (void)cur_opcode;
     ModRM m = decodeModRM(vm);
     uint32_t final_address = modRMaddress(vm, m);
     write_RM16(vm, m, final_address, read_segreg16(vm, m.reg));
 }
 // 8E
-void MOV_rm16_to_segreg(VM* vm){
+void MOV_rm16_to_segreg(VM* vm, uint8_t cur_opcode){
+    (void)cur_opcode;
     ModRM m = decodeModRM(vm);
     uint32_t final_address = modRMaddress(vm, m);
     write_segreg16(vm, m.reg, read_RM16(vm, m, final_address));
@@ -168,19 +177,20 @@ void MOV_rm16_to_segreg(VM* vm){
     // ** when mov ss or mov cs -> there are some actions -> check later!
 }
 // 50 - 57
-void PUSH_reg16(VM* vm){
-    uint8_t reg_i = (read_cur_opcode8(vm) & 0x07);
+void PUSH_reg16(VM* vm, uint8_t cur_opcode){
+    uint8_t reg_i = (cur_opcode & 0x07);
     PUSH_16(vm, read_reg16(vm, reg_i));
 }
 
 // 58 - 5F
-void POP_reg16(VM* vm){
-    uint8_t reg_i = (read_cur_opcode8(vm) & 0x07);
+void POP_reg16(VM* vm, uint8_t cur_opcode){
+    uint8_t reg_i = (cur_opcode & 0x07);
     write_reg16(vm, reg_i, POP_16(vm));
 }
 
 InstructionHandler opcode_main_handle_list[256];
-void handle_unknown_opcode(VM* vm) {
+void handle_unknown_opcode(VM* vm, uint8_t cur_opcode) {
+    (void)cur_opcode; // later add to the print
     printf("Error: Unimplemented Opcode at IP: %04X\n", read_ip16(vm) - 1);
     turn_off_vm(vm);
 }

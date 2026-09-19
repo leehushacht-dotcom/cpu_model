@@ -4,12 +4,11 @@
 
 // opcodes handle
 
-uint32_t get_final_address(VM* vm, uint8_t mod, uint8_t rm); // call if mod != 3 (reg)*
-
 void init_opcode_table();
 
 // חתימה לפונקציות הפקודות
-typedef void (*InstructionHandler)(VM* vm);
+typedef void (*InstructionHandler)(VM* vm, uint8_t cur_opcode);
+
 
 extern InstructionHandler opcode_main_handle_list[256];
 

@@ -15,7 +15,6 @@ struct VM {
     uint16_t seg_reg[4]; 
     uint16_t flags_reg; 
     uint16_t ip;
-    uint8_t current_opcode;
     bool is_running;
 };
 

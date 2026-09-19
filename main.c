@@ -2,7 +2,7 @@
 #include "opcodes.h"
 #include "hal.h"
 
-void prepare_segment_registers(VM* vm)
+static void prepare_segment_registers(VM* vm)
 {
     // for now this value -> later give more thought on it
     write_segreg16(vm, CS, 0x0700);
@@ -10,12 +10,23 @@ void prepare_segment_registers(VM* vm)
     write_segreg16(vm, ES, 0x0700);
     write_segreg16(vm, SS, 0x0700);
     write_reg16(vm, SP, 0xFF00); // for test
-    set_flag(vm, FLAG_ZF, true);
     write_ip16(vm, 0x0100);
 
 }
+static void prepare_flags(VM* vm)
+{
+    set_flag(vm, FLAG_CF, false);
+    set_flag(vm, FLAG_SF, false);
+    set_flag(vm, FLAG_ZF, true);
+    set_flag(vm, FLAG_AF, false);
+    set_flag(vm, FLAG_DF, false);
+    set_flag(vm, FLAG_IF, false);
+    set_flag(vm, FLAG_OF, false);
+    set_flag(vm, FLAG_PF, false);
 
-void test(VM* vm){
+}
+
+static void test(VM* vm){
     // test
     uint32_t f_address = get_address(read_segreg16(vm, CS), read_ip16(vm));
     

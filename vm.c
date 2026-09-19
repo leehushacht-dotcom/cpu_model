@@ -3,7 +3,7 @@
 #include "hal.h"
 #include "internal.h"
 
-VM* create_vm(){
+VM* create_vm(void){
     VM* vm = (VM*)calloc(1, sizeof(struct VM)); 
     // check here - > need to think how to operate false
     if (!vm) return NULL;
@@ -28,13 +28,6 @@ uint16_t fetch_word(VM* vm){
     return (uint16_t)low_byte | ((uint16_t)high_byte << 8);
 }
 
-
-void write_cur_opcode8(VM* vm, uint8_t opcode){
-    vm->current_opcode = opcode;
-}
-uint8_t read_cur_opcode8(VM* vm){
-    return vm->current_opcode;
-}
 void turn_on_vm(VM* vm){
     vm->is_running = true;
 }
@@ -60,7 +53,6 @@ void run_vm(VM* vm){
     while (is_vm_running(vm))
     {
         uint8_t opcode = fetch_byte(vm);
-        write_cur_opcode8(vm, opcode);
-        opcode_main_handle_list[opcode](vm);
+        opcode_main_handle_list[opcode](vm, opcode);
     }
 }
