@@ -202,39 +202,114 @@ void handle_unknown_opcode(VM* vm, uint8_t cur_opcode) {
 
 
 // alu operands:
-uint8_t all_alu_operands_handle8(VM* vm, uint8_t cur_opcode, uint8_t a, uint8_t b){
-    return alu_op8[(cur_opcode >> 3) & 0x07](vm, a, b);
+uint8_t all_alu_operands_handle8(VM* vm, uint8_t op, uint8_t a, uint8_t b){
+    return alu_op8[op & 0x07](vm, a, b);
 }
-uint16_t all_alu_operands_handle16(VM* vm, uint8_t cur_opcode, uint16_t a, uint16_t b){
-    return alu_op16[(cur_opcode >> 3) & 0x07](vm, a, b);
+uint16_t all_alu_operands_handle16(VM* vm, uint8_t op, uint16_t a, uint16_t b){
+    return alu_op16[op & 0x07](vm, a, b);
 }
-
+//00, 08, 10, 18, 20, 28, 30, 38
 void alu_rm8_r8(VM* vm, uint8_t cur_opcode){
     ModRM m = decodeModRM(vm);
     uint32_t final_address = modRMaddress(vm, m);
-    write_RM8(vm, m, final_address, all_alu_operands_handle8(vm, cur_opcode, read_RM8(vm, m, final_address), read_reg8(vm, m.reg)));
+    write_RM8(vm, m, final_address, all_alu_operands_handle8(vm, (cur_opcode >> 3), read_RM8(vm, m, final_address), read_reg8(vm, m.reg)));
 }
+//01, 09, 11, 19, 21, 29, 31, 39
 void alu_rm16_r16(VM* vm, uint8_t cur_opcode){
     ModRM m = decodeModRM(vm);
     uint32_t final_address = modRMaddress(vm, m);
-    write_RM16(vm, m, final_address, all_alu_operands_handle16(vm, cur_opcode, read_RM16(vm, m, final_address), read_reg16(vm, m.reg)));
+    write_RM16(vm, m, final_address, all_alu_operands_handle16(vm, (cur_opcode >> 3), read_RM16(vm, m, final_address), read_reg16(vm, m.reg)));
 }
+//02, 0A, 12, 1A, 22, 2A, 32, 3A
 void alu_r8_rm8(VM* vm, uint8_t cur_opcode){
     ModRM m = decodeModRM(vm);
     uint32_t final_address = modRMaddress(vm, m);
-    write_reg8(vm, m.reg, all_alu_operands_handle8(vm, cur_opcode, read_reg8(vm, m.reg), read_RM8(vm, m, final_address)));
+    write_reg8(vm, m.reg, all_alu_operands_handle8(vm, (cur_opcode >> 3), read_reg8(vm, m.reg), read_RM8(vm, m, final_address)));
 }
+//03, 0B, 13, 1B, 23, 2B, 33, 3B
 void alu_r16_rm16(VM* vm, uint8_t cur_opcode){
     ModRM m = decodeModRM(vm);
     uint32_t final_address = modRMaddress(vm, m);
-    write_reg16(vm, m.reg, all_alu_operands_handle16(vm, cur_opcode, read_reg16(vm, m.reg), read_RM16(vm, m, final_address)));
+    write_reg16(vm, m.reg, all_alu_operands_handle16(vm, (cur_opcode >> 3), read_reg16(vm, m.reg), read_RM16(vm, m, final_address)));
 }
+//04, 0C, 14, 1C, 24, 2C, 34, 3C
 void alu_al_imm8(VM* vm, uint8_t cur_opcode){
-    write_reg8(vm, AL, all_alu_operands_handle8(vm, cur_opcode, read_reg8(vm, AL), fetch_byte(vm)));
+    write_reg8(vm, AL, all_alu_operands_handle8(vm, (cur_opcode >> 3), read_reg8(vm, AL), fetch_byte(vm)));
 }
+//05, 0D, 15, 1D, 25, 2D, 35, 3D
 void alu_ax_imm16(VM* vm, uint8_t cur_opcode){
-    write_reg16(vm, AX, all_alu_operands_handle16(vm, cur_opcode, read_reg16(vm, AX), fetch_word(vm)));
+    write_reg16(vm, AX, all_alu_operands_handle16(vm, (cur_opcode >> 3), read_reg16(vm, AX), fetch_word(vm)));
 
+}
+//80
+void alu_rm8_imm8(VM* vm, uint8_t cur_opcode){
+    (void)cur_opcode;
+    ModRM m = decodeModRM(vm);
+    uint32_t final_address = modRMaddress(vm, m);
+    write_RM8(vm, m, final_address, all_alu_operands_handle8(vm, m.reg, read_RM8(vm, m, final_address), fetch_byte(vm)));
+}
+//81
+void alu_rm16_imm16(VM* vm, uint8_t cur_opcode){
+    (void)cur_opcode;
+    ModRM m = decodeModRM(vm);
+    uint32_t final_address = modRMaddress(vm, m);
+    write_RM16(vm, m, final_address, all_alu_operands_handle16(vm, m.reg, read_RM16(vm, m, final_address), fetch_word(vm)));
+}
+//83
+void alu_rm16_imm8(VM* vm, uint8_t cur_opcode){
+    (void)cur_opcode;
+    ModRM m = decodeModRM(vm);
+    uint32_t final_address = modRMaddress(vm, m);
+    write_RM16(vm, m, final_address, all_alu_operands_handle16(vm, m.reg, read_RM16(vm, m, final_address),(int16_t)(int8_t)fetch_byte(vm)));
+}
+//40 -> 47
+void INC_reg16(VM* vm, uint8_t cur_opcode){
+    write_reg16(vm, cur_opcode & 0x07, alu_inc16(vm, read_reg16(vm, cur_opcode & 0x07)));
+}
+// 48 -> 4f
+void DEC_reg16(VM* vm, uint8_t cur_opcode){
+    write_reg16(vm, cur_opcode & 0x07, alu_dec16(vm, read_reg16(vm, cur_opcode & 0x07)));
+}
+// fe
+void GROUP_FE_rm8(VM* vm, uint8_t cur_opcode){
+    ModRM m = decodeModRM(vm);
+    uint32_t final_address = modRMaddress(vm, m);
+    switch (m.reg)
+    {
+    case 0:
+        write_RM8(vm, m, final_address, alu_inc8(vm, read_RM8(vm, m, final_address)));
+        break;
+    case 1:
+        write_RM8(vm, m, final_address, alu_dec8(vm, read_RM8(vm, m, final_address)));
+        break;
+    default:
+        handle_unknown_opcode(vm, cur_opcode);
+        return;
+    }
+}
+// ff
+void GROUP_FF_rm16(VM* vm, uint8_t cur_opcode){
+    ModRM m = decodeModRM(vm);
+    uint32_t final_address = modRMaddress(vm, m);
+    switch (m.reg)
+    {
+    case 0:
+        write_RM16(vm, m, final_address, alu_inc16(vm, read_RM16(vm, m, final_address)));
+        break;
+    case 1:
+        write_RM16(vm, m, final_address, alu_dec16(vm, read_RM16(vm, m, final_address)));
+        break;
+    // add here all others ...
+    default:
+
+        handle_unknown_opcode(vm, cur_opcode);
+        return;
+    }
+}
+
+void HLT(VM* vm, uint8_t cur_opcode){
+    (void)cur_opcode;
+    halt_vm(vm);
 }
 
 // 3. פונקציית האתחול - נקראת פעם אחת בתחילת התוכנית!
@@ -272,10 +347,32 @@ void init_opcode_table() {
     opcode_main_handle_list[0xC6] = MOV_imm8_to_rm8;
     opcode_main_handle_list[0x8C] = MOV_segreg_to_rm16;
     opcode_main_handle_list[0x8E] = MOV_rm16_to_segreg;
-
+    for (int row = 0; row < 8; row++){
+        int base = row * 8;
+        opcode_main_handle_list[base + 0] = alu_rm8_r8;
+        opcode_main_handle_list[base + 1] = alu_rm16_r16;
+        opcode_main_handle_list[base + 2] = alu_r8_rm8;
+        opcode_main_handle_list[base + 3] = alu_r16_rm16;
+        opcode_main_handle_list[base + 4] = alu_al_imm8;
+        opcode_main_handle_list[base + 5] = alu_ax_imm16;
+    }
+    for(int i = 0x40; i <= 0x47; i++){
+        opcode_main_handle_list[i] = INC_reg16;
+    }
+    for(int i = 0x48; i <= 0x4f; i++){
+        opcode_main_handle_list[i] = DEC_reg16;
+    }
+    opcode_main_handle_list[0xfe] = GROUP_FE_rm8;
+    opcode_main_handle_list[0xff] = GROUP_FF_rm16;
+    opcode_main_handle_list[0xF4] = HLT;
 
     // ...
     // in progress: 
+    opcode_main_handle_list[0x80] = alu_rm8_imm8;
+    opcode_main_handle_list[0x81] = alu_rm16_imm16;
+    opcode_main_handle_list[0x83] = alu_rm16_imm8;
+
+
     // -------------------
     alu_op8[0] = alu_add8;
     alu_op8[1] = alu_or8;
@@ -295,14 +392,5 @@ void init_opcode_table() {
     alu_op16[6] = alu_xor16;
     alu_op16[7] = alu_cmp16;
     // --------------------
-    for (int row = 0; row < 8; row++){
-        int base = row * 8;
-        opcode_main_handle_list[base + 0] = alu_rm8_r8;
-        opcode_main_handle_list[base + 1] = alu_rm16_r16;
-        opcode_main_handle_list[base + 2] = alu_r8_rm8;
-        opcode_main_handle_list[base + 3] = alu_r16_rm16;
-        opcode_main_handle_list[base + 4] = alu_al_imm8;
-        opcode_main_handle_list[base + 5] = alu_ax_imm16;
-    }
-    // opcode_main_handle_list[0xF4] = HLT;
+
 }

@@ -44,6 +44,10 @@ void turn_on_vm(VM* vm);
 void turn_off_vm(VM* vm);
 bool is_vm_running(VM* vm);
 
+void halt_vm(VM* vm);
+void resume_vm(VM* vm);
+bool is_vm_halted(VM* vm);
+
 uint8_t fetch_byte(VM* vm);
 uint16_t fetch_word(VM* vm);
 

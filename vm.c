@@ -37,7 +37,15 @@ void turn_off_vm(VM* vm){
 bool is_vm_running(VM* vm){
     return vm->is_running;
 }
-
+void halt_vm(VM* vm){
+    vm->is_halted = true;
+}
+void resume_vm(VM* vm){
+    vm->is_halted = false;
+}
+bool is_vm_halted(VM* vm){
+    return vm->is_halted;
+}
 void PUSH_16(VM* vm, uint16_t value){
     write_reg16(vm, SP, read_reg16(vm, SP) - 2);
     write_mem16(vm, get_address(read_segreg16(vm, SS), read_reg16(vm, SP)), value);
@@ -52,6 +60,11 @@ uint16_t POP_16(VM* vm){
 void run_vm(VM* vm){
     while (is_vm_running(vm))
     {
+        // check for interrups
+
+        // check hlt
+        if(is_vm_halted(vm)) break; // later just continue when intterups will add
+        // fetch
         uint8_t opcode = fetch_byte(vm);
         opcode_main_handle_list[opcode](vm, opcode);
     }

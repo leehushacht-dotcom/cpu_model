@@ -16,6 +16,7 @@ struct VM {
     uint16_t flags_reg; 
     uint16_t ip;
     bool is_running;
+    bool is_halted;
 };
 
 #endif

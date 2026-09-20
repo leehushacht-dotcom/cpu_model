@@ -120,7 +120,7 @@ uint16_t alu_cmp16(VM* vm, uint16_t a, uint16_t b){
     return a;
 }
 // < -------- cmp --------- >
-// need - > AND, XOR, OR
+// < --- AND, XOR, OR ----- >
 static void basic_flags_update8(VM* vm, uint16_t result){
     update_flags_result_only8(vm, result);
     set_flag(vm, FLAG_CF, 0);
@@ -157,3 +157,33 @@ uint16_t alu_and16(VM* vm, uint16_t a, uint16_t b){
     basic_flags_update16(vm, (uint32_t)a&(uint32_t)b);
     return a & b;
 }
+// < --- AND, XOR, OR ----- >
+// < -------- INC --------- >
+uint16_t alu_inc16(VM* vm, uint16_t a){
+    bool save = get_flag(vm, FLAG_CF);
+    add_flags16(vm, a, 1, (uint32_t)a+1);
+    set_flag(vm, FLAG_CF, save);
+    return a + 1;
+}
+uint8_t alu_inc8(VM* vm, uint8_t a){
+    bool save = get_flag(vm, FLAG_CF);
+    add_flags8(vm, a, 1, (uint16_t)a+1);
+    set_flag(vm, FLAG_CF, save);
+    return a + 1;
+}
+// < -------- INC --------- >
+// < -------- DEC --------- >
+uint16_t alu_dec16(VM* vm, uint16_t a){
+    bool save = get_flag(vm, FLAG_CF);
+    sub_flags16(vm, a, 1, (uint32_t)a-1);
+    set_flag(vm, FLAG_CF, save);
+    return a - 1;
+}
+uint8_t alu_dec8(VM* vm, uint8_t a){
+    bool save = get_flag(vm, FLAG_CF);
+    sub_flags8(vm, a, 1, (uint16_t)a-1);
+    set_flag(vm, FLAG_CF, save);
+    return a - 1;
+}
+
+// < -------- DEC --------- >
